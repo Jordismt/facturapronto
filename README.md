@@ -8,7 +8,7 @@
 
 **FacturaPronto Pro** es una infraestructura de facturación de grado profesional diseñada para freelancers y empresas que requieren una gestión ágil sin comprometer la soberanía de sus datos. A diferencia de las plataformas SaaS tradicionales, FacturaPronto Pro opera bajo una filosofía **Zero-Cloud**, ejecutándose exclusivamente en el cliente para garantizar que la información sensible jamás abandone tu dispositivo.
 
-[Explorar Demo](#) · [Reportar Bug](https://github.com/tu-usuario/facturapronto-pro/issues) · [Solicitar Feature](https://github.com/tu-usuario/facturapronto-pro/issues)
+[Explorar Demo](https://facturapronto.vercel.app/) · 
 
 ---
 
@@ -33,10 +33,4 @@ FacturaPronto Pro utiliza tecnologías ligeras de alto rendimiento para eliminar
 
 ---
 
-## 📦 Instalación y Despliegue
 
-Al ser una infraestructura puramente estática (Client-Side), el despliegue es instantáneo en cualquier entorno:
-
-1. **Clonación del Repositorio:**
-   ```bash
-   git clone [https://github.com/jordismt/facturapronto.git](https://github.com/tu-usuario/facturapronto.git)
