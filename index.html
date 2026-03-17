@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FacturaPronto Pro | Sistema de Gestión Empresarial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; letter-spacing: -0.01em; }
+        .fila-concepto { transition: all 0.3s ease; }
+        #ayudaTooltip:hover #ayudaMenu { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-900 antialiased flex flex-col min-h-screen">
+    
+    <div class="max-w-6xl mx-auto py-6 md:py-12 px-4 md:px-6 flex-grow w-full">
+        
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 text-center md:text-left">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-blue-600 tracking-tighter flex items-center justify-center md:justify-start gap-2">
+                    <span class="bg-blue-600 text-white p-2 rounded-lg text-lg md:text-xl shadow-lg shadow-blue-100">FP</span>
+                    FACTURAPRONTO <span class="text-slate-400 font-light ml-1 md:ml-2">PRO</span>
+                </h1>
+                <p class="text-slate-500 text-xs md:text-sm mt-1 uppercase font-bold tracking-widest">Infraestructura Privada de Facturación</p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-3 w-full md:w-auto">
+                <button onclick="resetAbsoluto()" class="flex-1 md:flex-none px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-xl text-[10px] font-bold hover:bg-red-600 hover:text-white transition uppercase tracking-tighter">
+                    Reset Sistema
+                </button>
+                <button onclick="exportarBackup()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition shadow-sm text-slate-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    GENERAR BACKUP
+                </button>
+                <label class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition cursor-pointer shadow-md shadow-blue-200 tracking-wide">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    IMPORTAR BACKUP
+                    <input type="file" id="importarBackup" class="hidden" accept=".json">
+                </label>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+            
+            <aside class="space-y-6 order-2 lg:order-1">
+                <section class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm animate-fade">
+                    <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full"></span> Configuración del Emisor
+                    </h2>
+                    <div id="previewLogo" class="w-full h-32 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center mb-4 overflow-hidden relative group cursor-pointer hover:bg-slate-100 transition">
+                        <span class="text-slate-400 text-[10px]">Click para subir Logo</span>
+                        <input type="file" id="inputLogo" class="absolute inset-0 opacity-0 cursor-pointer">
+                    </div>
+                    <div class="space-y-3">
+                        <input type="text" id="miNombre" placeholder="Tu Nombre o Razón Social" class="w-full p-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition text-sm">
+                        <input type="text" id="miNif" placeholder="Tu NIF / CIF" class="w-full p-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition text-sm">
+                        <textarea id="miDireccion" placeholder="Dirección Fiscal" rows="2" class="w-full p-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition text-sm"></textarea>
+                        <input type="text" id="miIban" placeholder="IBAN para cobros" class="w-full p-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition text-sm text-blue-700 font-mono">
+                        <div class="pt-4 border-t border-slate-100">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase">Nº de Factura actual</label>
+                            <input type="number" id="proximaFactura" class="w-full mt-1 p-3 bg-blue-50 text-blue-700 font-black rounded-xl outline-none" min="1">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="bg-slate-900 p-6 rounded-3xl text-white shadow-xl shadow-slate-200 animate-fade" style="animation-delay: 0.1s">
+                    <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Volumen de Ventas (Histórico)</p>
+                    <h3 id="totalMes" class="text-3xl font-extrabold tracking-tighter">0.00€</h3>
+                    <div class="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-[9px] text-slate-500 uppercase font-bold tracking-tighter tracking-widest">Base de Datos Local</span>
+                        <span class="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
+                    </div>
+                </section>
+            </aside>
+
+            <main class="lg:col-span-2 space-y-6 order-1 lg:order-2">
+                
+                <section class="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade">
+                    <div class="bg-white p-5 rounded-3xl border border-slate-200">
+                        <div class="text-blue-600 font-black text-xl mb-1 italic">1.</div>
+                        <h4 class="text-[10px] font-bold uppercase text-slate-400 mb-2">Configura</h4>
+                        <p class="text-[11px] text-slate-600 leading-tight">Datos y logo se guardan en tu navegador automáticamente.</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-3xl border border-slate-200">
+                        <div class="text-blue-600 font-black text-xl mb-1 italic">2.</div>
+                        <h4 class="text-[10px] font-bold uppercase text-slate-400 mb-2">Genera</h4>
+                        <p class="text-[11px] text-slate-600 leading-tight">Crea conceptos y descarga el PDF al instante.</p>
+                    </div>
+                    <div class="bg-blue-600 p-5 rounded-3xl text-white shadow-lg shadow-blue-100">
+                        <div class="text-blue-200 font-black text-xl mb-1 italic">3.</div>
+                        <h4 class="text-[10px] font-bold uppercase mb-2">Backup</h4>
+                        <p class="text-[11px] text-blue-100 leading-tight">El <b>.JSON</b> es tu copia para restaurar todo en otro PC.</p>
+                    </div>
+                </section>
+
+                <form id="facturaForm" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade" style="animation-delay: 0.2s">
+                    <div class="p-5 md:p-8 border-b border-slate-100">
+                        <h2 class="text-xs font-black tracking-widest text-slate-400 uppercase mb-8">Nueva Transacción</h2>
+
+                        <div class="space-y-4 mb-8">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Datos del Cliente</label>
+                            <select id="selectClientes" class="w-full p-3 bg-slate-50 rounded-xl text-xs border border-slate-100 outline-none text-slate-600 transition focus:ring-2 focus:ring-blue-100">
+                                <option value="">Seleccionar cliente guardado...</option>
+                            </select>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="text" id="cliente" placeholder="Nombre / Razón Social Cliente" required class="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:border-blue-500 transition outline-none text-sm">
+                                <input type="text" id="nifCliente" placeholder="CIF / NIF Cliente" required class="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:border-blue-500 transition outline-none text-sm">
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="email" id="emailCliente" placeholder="Email (para envío opcional)" required class="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:border-blue-500 transition outline-none text-sm">
+                                <input type="text" id="dirCliente" placeholder="Dirección Fiscal Cliente" required class="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:border-blue-500 transition outline-none text-sm">
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Servicios / Productos</label>
+                            <div id="contenedorConceptos" class="space-y-3">
+                                <div class="flex flex-col md:flex-row gap-3 fila-concepto p-4 md:p-0 bg-slate-50 md:bg-transparent rounded-2xl border border-slate-100 md:border-0">
+                                    <input type="text" placeholder="Concepto o descripción" required class="flex-grow p-4 bg-white md:bg-slate-50 rounded-2xl outline-none border border-transparent focus:border-slate-200 transition text-sm">
+                                    <div class="flex gap-2">
+                                        <input type="number" placeholder="Cant." value="1" min="1" required class="w-1/3 md:w-20 p-4 bg-white md:bg-slate-50 rounded-2xl text-center font-bold text-sm">
+                                        <input type="number" step="0.01" placeholder="Precio" required class="flex-1 md:w-32 p-4 bg-white md:bg-slate-50 rounded-2xl text-right font-bold text-blue-600 text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" id="btnAnadirFila" class="flex items-center gap-2 text-[10px] font-black text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-xl transition uppercase tracking-tighter">
+                                + Añadir concepto
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 md:p-8 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div class="flex items-center gap-3">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="aplicarIrpf" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
+                                <span class="ml-3 text-xs font-bold text-slate-600 uppercase">IRPF (15%)</span>
+                            </label>
+                        </div>
+                        <button type="submit" id="btnSubmit" class="w-full md:w-auto px-10 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all text-xs tracking-widest uppercase">
+                            GENERAR Y DESCARGAR PDF
+                        </button>
+                    </div>
+                </form>
+
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade" style="animation-delay: 0.3s">
+                    <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider">Historial de Ventas</h3>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <button onclick="exportarCSV()" class="flex-1 md:flex-none text-[10px] font-black text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 hover:bg-blue-600 hover:text-white transition uppercase">
+                                Exportar Excel
+                            </button>
+                            <button onclick="limpiarSoloHistorial()" class="flex-1 md:flex-none text-[10px] font-black text-orange-500 bg-orange-50 px-4 py-2 rounded-full border border-orange-100 hover:bg-orange-500 hover:text-white transition uppercase">
+                                Limpiar Ventas
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-[9px] uppercase text-slate-400 font-bold">
+                                <tr>
+                                    <th class="px-8 py-4">Ref.</th>
+                                    <th class="px-8 py-4">Cliente</th>
+                                    <th class="px-8 py-4 text-right">Monto Total</th>
+                                    <th class="px-8 py-4"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaHistorial" class="divide-y divide-slate-50 text-sm"></tbody>
+                        </table>
+                    </div>
+                    <div id="historialMovil" class="md:hidden divide-y divide-slate-100"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="notificacionEmail" class="fixed bottom-4 left-4 right-4 md:left-auto md:bottom-10 md:right-10 transform translate-y-32 opacity-0 transition-all duration-500 z-50">
+        <div class="bg-slate-900 text-white p-5 md:p-6 rounded-3xl shadow-2xl flex flex-col md:flex-row items-center gap-4 border border-slate-700">
+            <div class="text-center md:text-left flex-grow">
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 italic">Operación Exitosa</p>
+                <p class="text-sm font-medium">Factura lista. ¿Enviar ahora por email?</p>
+            </div>
+            <div class="flex gap-2 w-full md:w-auto">
+                <button id="btnAbrirEmail" class="flex-1 md:flex-none bg-blue-600 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest">Enviar</button>
+                <button onclick="cerrarNotificacion()" class="bg-slate-800 px-4 py-3 rounded-2xl text-xs">✕</button>
+            </div>
+        </div>
+    </div>
+
+<div id="ayudaTooltip" class="fixed bottom-6 left-6 z-40 group">
+        <div class="w-12 h-12 bg-white border-2 border-blue-100 rounded-full shadow-lg flex items-center justify-center cursor-help hover:bg-blue-50 transition active:scale-95">
+            <span class="text-blue-600 font-black">?</span>
+        </div>
+        
+        <div id="ayudaMenu" class="hidden absolute bottom-16 left-0 w-72 bg-slate-900 text-white p-6 rounded-[2rem] shadow-2xl text-[11px] space-y-4 animate-fade z-50">
+            <div>
+                <p class="font-bold text-blue-400 mb-1 uppercase tracking-widest">💾 Backup .JSON (Importante)</p>
+                <p class="text-slate-400 leading-tight">Este archivo guarda TODO. Para restaurar tus datos en otro PC o navegador, usa el botón "IMPORTAR BACKUP" y selecciona este archivo.</p>
+            </div>
+            <div>
+                <p class="font-bold text-green-400 mb-1 uppercase tracking-widest">🔒 Privacidad Total</p>
+                <p class="text-slate-400 leading-tight">Tus datos nunca salen de este teléfono/ordenador. La base de datos es local.</p>
+            </div>
+            <button onclick="document.getElementById('ayudaMenu').style.display='none'" class="md:hidden w-full py-2 mt-2 bg-slate-800 rounded-xl text-slate-400 font-bold uppercase tracking-tighter">Cerrar Ayuda</button>
+        </div>
+    </div>
+
+<footer class="mt-auto pt-20 pb-10 px-6 border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+            
+            <div class="md:col-span-2 space-y-6">
+                <div class="flex items-center gap-2">
+                    <span class="bg-blue-600 text-white p-1.5 rounded-lg text-xs font-black shadow-lg shadow-blue-100">FP</span>
+                    <span class="text-blue-600 font-black text-xl tracking-tighter italic uppercase">FacturaPronto <span class="text-slate-400 font-light">PRO</span></span>
+                </div>
+                <p class="text-slate-500 text-xs leading-relaxed max-w-sm">
+                    La primera infraestructura de facturación **100% privada** del mercado. 
+                    Diseñada para profesionales que valoran la soberanía de sus datos y la velocidad extrema sin depender de la nube.
+                </p>
+                <div class="flex items-center gap-3">
+                    <div class="flex -space-x-2">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold">JS</div>
+                        <div class="w-8 h-8 rounded-full bg-blue-50 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600">TW</div>
+                        <div class="w-8 h-8 rounded-full bg-slate-900 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white">PDF</div>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Stack Tecnológico Local</span>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Herramientas</h4>
+                <ul class="space-y-4">
+                    <li><a href="javascript:exportarBackup()" class="text-xs text-slate-500 hover:text-blue-600 transition flex items-center gap-2">📦 Descargar Backup</a></li>
+                    <li><a href="javascript:exportarCSV()" class="text-xs text-slate-500 hover:text-blue-600 transition flex items-center gap-2">📊 Exportación Excel</a></li>
+                    <li><a href="javascript:window.print()" class="text-xs text-slate-500 hover:text-blue-600 transition flex items-center gap-2">🖨️ Imprimir Panel</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Privacidad</h4>
+                <div class="space-y-4">
+                    <div class="flex items-start gap-3">
+                        <div class="mt-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <p class="text-[11px] text-slate-500 italic">Encriptación AES-256 en Local Storage activa.</p>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p class="text-[9px] text-slate-400 leading-tight">Ningún dato sensible (NIF, IBAN o Facturas) sale jamás de este navegador.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-6">
+                <p class="text-[10px] text-slate-400 font-medium">© 2026 FacturaPronto PRO • <span class="text-slate-300">v2.5.0-Stable</span></p>
+                <div class="hidden md:flex gap-4">
+                    <a href="#" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-tighter">Terminos de uso local</a>
+                    <a href="#" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-tighter">Licencia MIT</a>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 px-4 py-2 bg-slate-900 rounded-full">
+                <div class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 bg-blue-400 rounded-full"></span>
+                    <span class="text-[9px] text-white font-black uppercase tracking-widest">Servidor: Desconectado (Offline Safe)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
